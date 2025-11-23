@@ -1,0 +1,96 @@
+Nama : Jonathan Sutandar
+NIM : 77041
+
+https://github.com/JoeRscL/LAB_WEEK_11_A
+https://github.com/JoeRscL/LAB_WEEK_11_B
+
+ASSIGNMENT
+Answer these questions based on Part 3 of the tutorial:
+1. When a user takes a picture, that picture is stored in a path based on the given
+URI. In which part of the code handles this? (Copy that part of the code as the
+answer)
+2. In your FileInfo.kt, there are 5 attributes. On the first attribute, what does the URI
+refer to? And on the fourth attribute, what does relativePath refer to?
+3. [Bonus] Explain the chronological order from when a user takes a picture until
+the file is stored in the MediaStore.
+
+1. Bagian kode yang menangani penyimpanan gambar berdasarkan URI yang diberikan:
+private fun insertToStore(fileInfo: FileInfo, contentUri: Uri, contentValues: ContentValues) {
+    executor.execute {
+        val insertedUri = contentResolver.insert(contentUri, contentValues)
+        insertedUri?.let {
+            val inputStream = contentResolver.openInputStream(fileInfo.uri)
+            val outputStream = contentResolver.openOutputStream(insertedUri)
+            IOUtils.copy(inputStream, outputStream)
+        }
+    }
+}
+
+Method insertToStore() ini yang menangani penyimpanan file berdasarkan URI. Method ini:
+
+Memasukkan entry baru ke MediaStore menggunakan contentResolver.insert()
+Membuka input stream dari URI sementara (file lokal)
+Membuka output stream ke URI MediaStore yang baru
+Menyalin data dari file sementara ke MediaStore menggunakan IOUtils.copy()
+
+2. Penjelasan atribut FileInfo.kt:
+
+Atribut pertama (uri: Uri):
+URI ini merujuk pada URI sementara yang dibuat oleh FileProvider untuk mengakses file di direktori private aplikasi (getExternalFilesDir()). URI ini berbentuk seperti content://com.example.lab_week_11_b.camera/... dan digunakan sebagai tujuan sementara ketika kamera menyimpan foto. URI ini bersifat temporary dan hanya dapat diakses oleh aplikasi yang memiliki izin khusus (diberikan melalui FileProvider).
+Atribut keempat (relativePath: String):
+relativePath merujuk pada nama folder standar Android di penyimpanan eksternal tempat file akan disimpan di MediaStore. Nilainya adalah konstanta dari Environment seperti:
+
+Environment.DIRECTORY_PICTURES untuk foto (biasanya "Pictures")
+Environment.DIRECTORY_MOVIES untuk video (biasanya "Movies")
+
+Path ini menentukan di folder mana file akan muncul di galeri pengguna dan file manager.
+
+3. Urutan kronologis dari pengambilan gambar hingga penyimpanan di MediaStore:
+
+1. User menekan tombol foto
+
+Method openImageCapture() di MainActivity dipanggil
+
+2. Generate FileInfo dengan URI sementara
+
+generatePhotoUri(System.currentTimeMillis()) dipanggil
+Membuat File object di getExternalFilesDir(DIRECTORY_PICTURES) (direktori private aplikasi)
+FileProvider.getUriForFile() membuat URI sementara (content URI) dari file tersebut
+Mengembalikan FileInfo dengan URI, nama file, relativePath, dan mimeType
+
+3. Launch aplikasi kamera
+
+takePictureLauncher.launch(uri) membuka kamera device
+URI sementara diberikan ke aplikasi kamera sebagai lokasi tujuan penyimpanan
+
+4. User mengambil foto
+
+Kamera menyimpan foto langsung ke URI yang diberikan (file di direktori private aplikasi)
+Foto tersimpan sementara di: /storage/emulated/0/Android/data/com.example.lab_week_11_b/files/Pictures/img_[timestamp].jpg
+
+5. Callback ActivityResult
+
+Setelah foto diambil, ActivityResultContracts.TakePicture() mengembalikan Boolean (success/fail)
+Callback dipanggil: providerFileManager.insertImageToStore(photoInfo)
+
+6. Insert ke MediaStore (method insertImageToStore)
+
+Memanggil insertToStore() dengan:
+
+contentUri: MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+contentValues: metadata foto (nama, mimeType, relativePath, dll)
+
+7. Proses penyimpanan di insertToStore()
+
+Dijalankan di background thread (executor.execute)
+contentResolver.insert() membuat entry baru di MediaStore dan mengembalikan URI publik baru
+Membuka InputStream dari URI sementara (file private)
+Membuka OutputStream ke URI MediaStore (lokasi publik)
+IOUtils.copy() menyalin byte data dari file sementara ke MediaStore
+
+8. File tersimpan permanen di MediaStore
+
+Foto sekarang ada di penyimpanan publik: /storage/emulated/0/Pictures/img_[timestamp].jpg
+Foto muncul di aplikasi Galeri dan dapat diakses aplikasi lain
+File asli di direktori private aplikasi masih ada (bisa dihapus jika tidak diperlukan)
+
